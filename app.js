@@ -12,9 +12,9 @@ const joinButton = document.getElementById('join-button');
 const videoContainer = document.getElementById('video-container');
 const localVideo = document.getElementById('local-video');
 
-/** @type {import('@supabase/supabase-js').SupabaseClient} */
+/** @type {SupabaseClient} */
 let supabaseClient;
-/** @type {import('@supabase/supabase-js').RealtimeChannel} */
+/** @type {RealtimeChannel} */
 let realtimeChannel;
 /** @type {string | null} */
 let myId = null;
@@ -25,6 +25,8 @@ let localStream = null;
 
 /** @type {Object<string, RTCPeerConnection>} */
 const peerConnections = {};
+/** @type {Object<string, RTCIceCandidateInit[]>} */
+const pendingCandidates = {};
 
 const iceServers = {
     iceServers: [
@@ -90,11 +92,12 @@ function setupSignaling() {
 /**
  * @param {string} peerId
  * @param {boolean} isInitiator
+ * @returns {RTCPeerConnection}
  */
 function createPeerConnection(peerId, isInitiator) {
     if (peerConnections[peerId]) {
-        console.log('Connection with', peerId, 'already exists.');
-        return;
+        console.log('⚠️ Connection with', peerId, 'already exists.');
+        return peerConnections[peerId];
     }
     console.log('Creating peer connection with', peerId);
 
@@ -128,6 +131,8 @@ function createPeerConnection(peerId, isInitiator) {
             })
             .catch(e => console.error('Error creating offer:', e));
     }
+
+    return pc;
 }
 
 /**
@@ -135,11 +140,29 @@ function createPeerConnection(peerId, isInitiator) {
  * @param {any} data
  */
 async function handleSignal(peerId, data) {
-    const pc = peerConnections[peerId] || createPeerConnection(peerId, false);
+    let pc = peerConnections[peerId];
+    if (!pc) {
+        pc = createPeerConnection(peerId, false);
+    }
 
     if (data.sdp) {
         try {
             await pc.setRemoteDescription(new RTCSessionDescription(data.sdp));
+            console.log('✅ Remote description set for', peerId);
+
+            // Flush pending ICE candidates
+            if (pendingCandidates[peerId]) {
+                for (const candidate of pendingCandidates[peerId]) {
+                    try {
+                        await pc.addIceCandidate(new RTCIceCandidate(candidate));
+                    } catch (e) {
+                        console.error('Error adding queued ICE candidate:', e);
+                    }
+                }
+                delete pendingCandidates[peerId];
+            }
+
+            // If offer, respond with answer
             if (data.sdp.type === 'offer') {
                 const answer = await pc.createAnswer();
                 await pc.setLocalDescription(answer);
@@ -150,7 +173,14 @@ async function handleSignal(peerId, data) {
         }
     } else if (data.candidate) {
         try {
-            await pc.addIceCandidate(new RTCIceCandidate(data.candidate));
+            if (pc.remoteDescription) {
+                await pc.addIceCandidate(new RTCIceCandidate(data.candidate));
+                console.log('✅ ICE candidate added for', peerId);
+            } else {
+                console.log('⏳ Queuing ICE candidate (remote desc not set yet)');
+                if (!pendingCandidates[peerId]) pendingCandidates[peerId] = [];
+                pendingCandidates[peerId].push(data.candidate);
+            }
         } catch (e) {
             console.error('Error adding ICE candidate:', e);
         }
