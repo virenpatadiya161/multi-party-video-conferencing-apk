@@ -56,7 +56,7 @@ async function init() {
 }
 
 function setupSignaling() {
-    realtimeChannel = supabase.channel(`room:${currentRoom}`, {
+    realtimeChannel = supabaseClient.channel(`room:${currentRoom}`, {
         config: {
             broadcast: {
                 self: false,
