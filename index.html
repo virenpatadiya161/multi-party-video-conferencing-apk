@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>WebRTC Meeting</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+
+<body>
+    <h1>WebRTC Multi-Party Meeting</h1>
+
+    <div id="join-area">
+        <input type="text" id="room-id" placeholder="Enter Room Name">
+        <button id="join-button">Join Room</button>
+    </div>
+
+    <div id="video-container" class="hidden">
+        <div class="video-wrapper">
+            <h3>You</h3>
+            <video id="local-video" autoplay muted playsinline></video>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="app.js"></script>
+</body>
+
+</html>
