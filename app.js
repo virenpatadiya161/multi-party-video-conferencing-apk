@@ -12,9 +12,9 @@ const joinButton = document.getElementById('join-button');
 const videoContainer = document.getElementById('video-container');
 const localVideo = document.getElementById('local-video');
 
-/** @type {SupabaseClient} */
-let supabase;
-/** @type {RealtimeChannel} */
+/** @type {import('@supabase/supabase-js').SupabaseClient} */
+let supabaseClient;
+/** @type {import('@supabase/supabase-js').RealtimeChannel} */
 let realtimeChannel;
 /** @type {string | null} */
 let myId = null;
@@ -47,7 +47,7 @@ async function init() {
     myId = `user-${Math.random().toString(36).substring(2, 9)}`;
     console.log('My ID:', myId);
 
-    supabase = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+    supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
     localStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
     localVideo.srcObject = localStream;
